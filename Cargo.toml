@@ -1,0 +1,11 @@
+[package]
+name = "lalrpop-operator-precedence"
+version = "0.0.0"
+edition = "2018"
+
+[build-dependencies]
+lalrpop = "0.19.6"
+
+[dependencies]
+lalrpop-util = "0.19.6"
+regex = "1"

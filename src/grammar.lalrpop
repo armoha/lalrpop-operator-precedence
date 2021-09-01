@@ -1,0 +1,97 @@
+use std::str::FromStr;
+use crate::ast::{Expr, UnOpcode, BinOpcode};
+
+use lalrpop_util::ErrorRecovery;
+
+grammar<'err>(errors: &'err mut Vec<ErrorRecovery<usize, Token<'input>, &'static str>>);
+
+pub Exprs = Comma<Expr>;
+
+Comma<T>: Vec<T> = {
+    <mut v:(<T> ",")*> <e:T?> => match e {
+        None => v,
+        Some(e) => {
+            v.push(e);
+            v
+        }
+    }
+};
+
+Expr: Box<Expr> = {
+    LogicExpr,
+}
+
+LogicExpr: Box<Expr> = {
+    CompExpr LogicOp CompExpr => Box::new(Expr::BinOp(<>)),
+    CompExpr,
+}
+LogicOp: BinOpcode = {
+    "&&" => BinOpcode::LogicAnd,
+    "||" => BinOpcode::LogicOr,
+}
+
+CompExpr: Box<Expr> = {
+    MathExpr CompOp MathExpr => Box::new(Expr::BinOp(<>)),
+    MathExpr,
+}
+MathExpr: Box<Expr> = {
+    MathTerm,
+    BitExpr,
+}
+CompOp: BinOpcode = {
+    "==" => BinOpcode::Equal,
+    "!=" => BinOpcode::NotEqual,
+    "<" => BinOpcode::LessThan,
+    ">" => BinOpcode::GreaterThan,
+    "<=" => BinOpcode::LessThanEqual,
+    ">=" => BinOpcode::GreaterThanEqual,
+}
+
+BitExpr: Box<Expr> = {
+    UnTerm BitOp UnTerm => Box::new(Expr::BinOp(<>)),
+}
+BitOp: BinOpcode = {
+    "&" => BinOpcode::BitAnd,
+    "|" => BinOpcode::BitOr,
+    "^" => BinOpcode::BitXor,
+    "<<" => BinOpcode::BitLsh,
+    ">>" => BinOpcode::BitRsh,
+}
+
+MathTerm: Box<Expr> = {
+    MathTerm TermOp Factor => Box::new(Expr::BinOp(<>)),
+    Factor
+}
+
+TermOp: BinOpcode = {
+    "+" => BinOpcode::Add,
+    "-" => BinOpcode::Sub,
+}
+
+Factor: Box<Expr> = {
+    Factor FactorOp UnTerm => Box::new(Expr::BinOp(<>)),
+    UnTerm
+}
+FactorOp: BinOpcode = {
+    "*" => BinOpcode::Mul,
+    "/" => BinOpcode::Div,
+    "%" => BinOpcode::Mod,
+}
+
+UnTerm: Box<Expr> = {
+    UnOp UnTerm => Box::new(Expr::UnOp(<>)),
+    Term
+}
+
+UnOp: UnOpcode = {
+    "-" => UnOpcode::Negate,
+    "!" => UnOpcode::Not,
+}
+
+Term: Box<Expr> = {
+    Num => Box::new(Expr::Number(<>)),
+    "(" <Expr> ")",
+    ! => { errors.push(<>); Box::new(Expr::Error) }
+};
+
+Num: i32 = r"[0-9]+" => i32::from_str(<>).unwrap();
