@@ -18,17 +18,20 @@ Comma<T>: Vec<T> = {
 };
 
 Expr: Box<Expr> = {
-    LogicExpr,
-}
-
-LogicExpr: Box<Expr> = {
-    CompExpr LogicOp CompExpr => Box::new(Expr::BinOp(<>)),
+    LogicAndExpr,
+    LogicOrExpr,
     CompExpr,
 }
-LogicOp: BinOpcode = {
-    "&&" => BinOpcode::LogicAnd,
-    "||" => BinOpcode::LogicOr,
-}
+
+Tier<Op, NextTier>: Box<Expr> = {
+    Tier<Op, NextTier> Op NextTier => Box::new(Expr::BinOp(<>)),
+    NextTier Op NextTier => Box::new(Expr::BinOp(<>)),
+};
+
+LogicAndExpr = Tier<LogicAndOp, CompExpr>;
+LogicOrExpr = Tier<LogicOrOp, CompExpr>;
+LogicAndOp: BinOpcode = "&&" => BinOpcode::LogicAnd;
+LogicOrOp: BinOpcode = "||" => BinOpcode::LogicOr;
 
 CompExpr: Box<Expr> = {
     MathExpr CompOp MathExpr => Box::new(Expr::BinOp(<>)),
@@ -36,7 +39,10 @@ CompExpr: Box<Expr> = {
 }
 MathExpr: Box<Expr> = {
     MathTerm,
-    BitExpr,
+    BitAndExpr,
+    BitOrExpr,
+    BitXorExpr,
+    BitShiftExpr,
 }
 CompOp: BinOpcode = {
     "==" => BinOpcode::Equal,
@@ -47,13 +53,14 @@ CompOp: BinOpcode = {
     ">=" => BinOpcode::GreaterThanEqual,
 }
 
-BitExpr: Box<Expr> = {
-    UnTerm BitOp UnTerm => Box::new(Expr::BinOp(<>)),
-}
-BitOp: BinOpcode = {
-    "&" => BinOpcode::BitAnd,
-    "|" => BinOpcode::BitOr,
-    "^" => BinOpcode::BitXor,
+BitAndExpr = Tier<BitAndOp, UnTerm>;
+BitOrExpr = Tier<BitOrOp, UnTerm>;
+BitXorExpr = Tier<BitXorOp, UnTerm>;
+BitShiftExpr: Box<Expr> = UnTerm BitShiftOp UnTerm => Box::new(Expr::BinOp(<>));
+BitAndOp: BinOpcode = "&" => BinOpcode::BitAnd;
+BitOrOp: BinOpcode = "|" => BinOpcode::BitOr;
+BitXorOp: BinOpcode = "^" => BinOpcode::BitXor;
+BitShiftOp: BinOpcode = {
     "<<" => BinOpcode::BitLsh,
     ">>" => BinOpcode::BitRsh,
 }
